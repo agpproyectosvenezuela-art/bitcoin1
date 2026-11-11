@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Bitcoin Odyssey: De Cero a Satoshis</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Google Fonts: Space Grotesk & Outfit -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            btc: '#F7931A',
+            btcLight: '#FFAB40',
+            darkBg: '#090D16',
+            cardBg: '#121826',
+            cardBorder: '#1E293B',
+            neonCyan: '#00F0FF',
+            neonGreen: '#00E676',
+            neonPink: '#FF007A'
+          },
+          fontFamily: {
+            sans: ['Outfit', 'sans-serif'],
+            mono: ['Space Grotesk', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Smooth Scrollbar and Glow Styles */
+    * {
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    body {
+      background-color: #090D16;
+      color: #F8FAFC;
+      overflow-x: hidden;
+      font-family: 'Outfit', sans-serif;
+    }
+    .glow-gold {
+      box-shadow: 0 0 25px rgba(247, 147, 26, 0.35);
+    }
+    .glow-cyan {
+      box-shadow: 0 0 25px rgba(0, 240, 255, 0.35);
+    }
+    .glow-green {
+      box-shadow: 0 0 25px rgba(0, 230, 118, 0.35);
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    /* Confetti Canvas */
+    #confetti-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 999;
+    }
+    /* Card Flip & Swipe Animations */
+    .card-swipe-left {
+      transform: translateX(-150%) rotate(-25deg);
+      opacity: 0;
+      transition: all 0.35s ease-out;
+    }
+    .card-swipe-right {
+      transform: translateX(150%) rotate(25deg);
+      opacity: 0;
+      transition: all 0.35s ease-out;
+    }
+    .pulse-subtle {
+      animation: pulseSubtle 2.5s infinite ease-in-out;
+    }
+    @keyframes pulseSubtle {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
+  </style>
+</head>
+<body class="flex justify-center min-h-screen">
+
+  <canvas id="confetti-canvas"></canvas>
+
+  <!-- Mobile Simulator Wrap -->
+  <div class="w-full max-w-md min-h-screen bg-darkBg flex flex-col relative border-x border-slate-800 shadow-2xl">
+
+    <!-- Top HUD Bar -->
+    <header class="sticky top-0 z-40 bg-cardBg/90 backdrop-blur-md border-b border-cardBorder px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <button id="btn-map-toggle" onclick="game.toggleView('map')" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-neonCyan transition active:scale-95">
+          <i class="fa-solid fa-map-location-dot text-sm"></i>
+        </button>
+        <div>
+          <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Nivel Actual</span>
+          <span id="hud-level" class="font-mono font-bold text-base text-btc">Nivel 1</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- Satoshis / Coins -->
+        <div class="flex items-center gap-1.5 bg-slate-900/80 px-2.5 py-1 rounded-full border border-amber-500/30">
+          <i class="fa-brands fa-bitcoin text-btc text-base"></i>
+          <span id="hud-sats" class="font-mono font-bold text-xs text-amber-200">50 sats</span>
+        </div>
+
+        <!-- Energy / Vidas -->
+        <div class="flex items-center gap-1 bg-slate-900/80 px-2.5 py-1 rounded-full border border-rose-500/30">
+          <i class="fa-solid fa-bolt text-rose-400 text-xs"></i>
+          <span id="hud-energy" class="font-mono font-bold text-xs text-rose-200">5/5</span>
+        </div>
+
+        <!-- Sound toggle -->
+        <button onclick="soundEngine.toggleMute()" id="sound-btn" class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-300 hover:text-white">
+          <i class="fa-solid fa-volume-high text-xs" id="sound-icon"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN APP SCREENS -->
+
+    <!-- VIEW 1: GAMEPLAY SCREEN -->
+    <main id="view-gameplay" class="flex-1 flex flex-col p-4 relative z-10 overflow-y-auto no-scrollbar">
+
+      <!-- Level Info Banner -->
+      <div class="mb-3 flex items-center justify-between bg-cardBg border border-cardBorder rounded-2xl p-3">
+        <div class="flex items-center gap-3">
+          <div id="game-badge-icon" class="w-10 h-10 rounded-xl bg-btc/20 border border-btc/40 flex items-center justify-center text-btc text-lg">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <div>
+            <h2 id="game-milestone-title" class="text-xs font-semibold text-neonCyan uppercase tracking-wider">Misión Génesis</h2>
+            <p id="game-mechanic-name" class="text-sm font-bold text-white">Prueba de Consenso</p>
+          </div>
+        </div>
+        <div class="text-right">
+          <span class="text-[10px] text-slate-400 font-bold block">RECOMPENSA</span>
+          <span id="game-reward-text" class="text-xs font-mono font-bold text-neonGreen">+25 SAT</span>
+        </div>
+      </div>
+
+      <!-- Progression in Level bar -->
+      <div class="w-full bg-slate-800 h-1.5 rounded-full mb-4 overflow-hidden">
+        <div id="level-step-progress" class="bg-gradient-to-r from-btc to-neonCyan h-full w-1/3 transition-all duration-300"></div>
+      </div>
+
+      <!-- DYNAMIC CONTENT CONTAINER (Reigns, Match, Math, Unscramble, Hash Clicker) -->
+      <div id="interactive-area" class="flex-1 flex flex-col justify-center items-center relative min-h-[360px]">
+        <!-- Injected via JavaScript based on level type -->
+      </div>
+
+      <!-- Educational Teacher Bubble / Feedback Modal -->
+      <div id="teacher-drawer" class="hidden mt-3 bg-slate-900/95 border border-slate-700/80 rounded-2xl p-4 shadow-xl backdrop-blur-md">
+        <div class="flex items-start gap-3">
+          <div class="w-9 h-9 rounded-full bg-amber-500/20 border border-amber-500/50 flex-shrink-0 flex items-center justify-center text-amber-400 text-sm">
+            <i class="fa-solid fa-chalkboard-user"></i>
+          </div>
+          <div class="flex-1">
+            <h4 id="teacher-name" class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-1">Cátedra Fintech</h4>
+            <p id="teacher-feedback-text" class="text-xs text-slate-200 leading-relaxed font-normal">
+              Bitcoin es digital y limitado a 21 millones. Satoshi Nakamoto programó esto para que ninguna entidad pueda imprimir más.
+            </p>
+          </div>
+        </div>
+        <button id="btn-next-action" onclick="game.nextSubstepOrLevel()" class="w-full mt-3 py-2.5 bg-gradient-to-r from-btc to-amber-500 hover:from-amber-500 hover:to-btc text-darkBg font-bold text-sm rounded-xl shadow-lg transition active:scale-98">
+          Continuar <i class="fa-solid fa-arrow-right ml-1"></i>
+        </button>
+      </div>
+
+    </main>
+
+    <!-- VIEW 2: ROADMAP 400 LEVELS SCREEN -->
+    <section id="view-map" class="hidden flex-1 flex flex-col p-4 bg-darkBg relative z-20 overflow-y-auto no-scrollbar">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4 sticky top-0 bg-darkBg/95 backdrop-blur z-20">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-route text-btc"></i> Odisea de 400 Niveles
+          </h2>
+          <p class="text-xs text-slate-400">Desde Bloque Génesis hasta Ciudadela Satoshi</p>
+        </div>
+        <button onclick="game.toggleView('game')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-lg border border-slate-700">
+          Cerrar Mapa
+        </button>
+      </div>
+
+      <!-- Quick Chapter Milestones bar -->
+      <div class="flex gap-2 overflow-x-auto pb-2 mb-3 no-scrollbar text-xs">
+        <button onclick="game.jumpToLevelCluster(1)" class="whitespace-nowrap px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 hover:text-btc">
+          1-50: Génesis
+        </button>
+        <button onclick="game.jumpToLevelCluster(51)" class="whitespace-nowrap px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 hover:text-btc">
+          51-100: Halvings
+        </button>
+        <button onclick="game.jumpToLevelCluster(101)" class="whitespace-nowrap px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 hover:text-btc">
+          101-200: Llaves
+        </button>
+        <button onclick="game.jumpToLevelCluster(201)" class="whitespace-nowrap px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 hover:text-btc">
+          201-300: Red P2P
+        </button>
+        <button onclick="game.jumpToLevelCluster(301)" class="whitespace-nowrap px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-slate-300 hover:text-btc">
+          301-400: Ciudadela
+        </button>
+      </div>
+
+      <!-- Dynamic Grid of 400 Unique Levels -->
+      <div id="level-map-grid" class="grid grid-cols-4 sm:grid-cols-5 gap-2.5 pb-10">
+        <!-- Injected via JS -->
+      </div>
+    </section>
+
+    <!-- Bottom Navigation Footer -->
+    <footer class="bg-cardBg border-t border-cardBorder px-4 py-2 flex items-center justify-around z-30">
+      <button onclick="game.toggleView('game')" class="flex flex-col items-center text-xs text-btc py-1">
+        <i class="fa-solid fa-gamepad text-base mb-1"></i>
+        <span>Jugar</span>
+      </button>
+      <button onclick="game.toggleView('map')" class="flex flex-col items-center text-xs text-slate-400 hover:text-slate-200 py-1">
+        <i class="fa-solid fa-network-wired text-base mb-1"></i>
+        <span>400 Niveles</span>
+      </button>
+      <button onclick="game.showGlossary()" class="flex flex-col items-center text-xs text-slate-400 hover:text-slate-200 py-1">
+        <i class="fa-solid fa-book-bookmark text-base mb-1"></i>
+        <span>Enciclopedia</span>
+      </button>
+    </footer>
+
+    <!-- Glossary Modal Dialog -->
+    <div id="modal-glossary" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-cardBg border border-slate-700 rounded-2xl w-full max-w-sm max-h-[80vh] flex flex-col p-4 shadow-2xl">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-700 mb-3">
+          <h3 class="font-bold text-white text-base flex items-center gap-2">
+            <i class="fa-solid fa-graduation-cap text-btc"></i> Glosario Bitcoin
+          </h3>
+          <button onclick="game.closeGlossary()" class="w-7 h-7 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center hover:text-white">
+            <i class="fa-solid fa-xmark text-xs"></i>
+          </button>
+        </div>
+        <div class="overflow-y-auto space-y-3 text-xs text-slate-300 pr-1 no-scrollbar">
+          <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-800">
+            <span class="font-bold text-btc block mb-0.5">Satoshi Nakamoto</span>
+            Creador o grupo anónimo que publicó el Whitepaper el 31 de octubre de 2008 y lanzó la red en 2009.
+          </div>
+          <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-800">
+            <span class="font-bold text-neonCyan block mb-0.5">21 Millones</span>
+            Límite matemático inalterable de bitcoins que existirán en toda la historia humana.
+          </div>
+          <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-800">
+            <span class="font-bold text-neonGreen block mb-0.5">Halving</span>
+            Evento cada 210,000 bloques (~4 años) que reduce a la mitad la emisión diaria de nuevas monedas.
+          </div>
+          <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-800">
+            <span class="font-bold text-amber-300 block mb-0.5">Andreas Antonopoulos</span>
+            Divulgador célebre: acuñó "Not your keys, not your coins" (Si no tienes tus llaves, no es tu dinero).
+          </div>
+          <div class="bg-slate-900/70 p-2.5 rounded-xl border border-slate-800">
+            <span class="font-bold text-rose-400 block mb-0.5">Deflación vs Inflación</span>
+            Al tener oferta fija y menor emisión, Bitcoin gana poder de compra frente a monedas fiat que se imprimen sin límite.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- JAVASCRIPT GAME ENGINE -->
+  <script>
+    /* ==========================================================================
+       1. SYNTHETIC WEB AUDIO ENGINE (Zero external dependencies)
+       ========================================================================== */
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+      toggleMute() {
+        this.muted = !this.muted;
+        const icon = document.getElementById('sound-icon');
+        if (icon) {
+          icon.className = this.muted ? "fa-solid fa-volume-xmark text-xs text-rose-400" : "fa-solid fa-volume-high text-xs";
+        }
+      }
+      playTone(freq, type = 'sine', duration = 0.15, gainVal = 0.1) {
+        if (this.muted) return;
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch (e) {
+          // Audio safe fail
+        }
+      }
+      playCorrect() {
+        this.playTone(523.25, 'sine', 0.12, 0.12); // C5
+        setTimeout(() => this.playTone(659.25, 'sine', 0.12, 0.12), 100); // E5
+        setTimeout(() => this.playTone(783.99, 'triangle', 0.25, 0.15), 200); // G5
+      }
+      playError() {
+        this.playTone(220, 'sawtooth', 0.18, 0.08);
+        setTimeout(() => this.playTone(174.6, 'sawtooth', 0.22, 0.08), 120);
+      }
+      playTap() {
+        this.playTone(440, 'triangle', 0.05, 0.05);
+      }
+      playLevelUp() {
+        const notes = [440, 554.37, 659.25, 880];
+        notes.forEach((f, i) => {
+          setTimeout(() => this.playTone(f, 'sine', 0.2, 0.15), i * 110);
+        });
+      }
+    }
+    const soundEngine = new SoundEngine();
+
+    /* ==========================================================================
+       2. PROCEDURAL 400-LEVEL GENERATOR & DATABASE
+       ========================================================================== */
+    // Pedagogical concept dictionary for 1st-year secondary
+    const PEDAGOGY_DATA = {
+      reignsQuestions: [
+        { q: "¿Cualquier persona en el mundo puede crear una billetera de Bitcoin sin pedir permiso a un banco?", a: true, teacher: "¡Exacto! Bitcoin es un protocolo neutral y descentralizado; no discrimina por país, edad ni condición social." },
+        { q: "¿Un gobierno puede imprimir 5 millones más de bitcoins cuando haya una crisis económica?", a: false, teacher: "¡Falso! El límite estricto de 21,000,000 está blindado matemáticamente en el código. Nadie puede emitir de más." },
+        { q: "¿Satoshi Nakamoto reveló su verdadera identidad en un programa de televisión en 2012?", a: false, teacher: "Mito. Satoshi Nakamoto es un pseudónimo anónimo que se retiró en 2011 dejando el software a la humanidad." },
+        { q: "¿Si compartes tus 12 o 24 palabras de recuperación (semilla), otra persona puede quitarte tus bitcoins?", a: true, teacher: "Andreas Antonopoulos lo recalca: 'Not your keys, not your coins'. Esas palabras son la llave maestra privada." },
+        { q: "¿El 'Halving' ocurre aproximadamente cada 4 años para reducir la creación de nuevas monedas?", a: true, teacher: "Correcto. Ocurre cada 210,000 bloques. Esto produce un shock de oferta y previene la hiperinflación." },
+        { q: "¿Bitcoin necesita un edificio central con servidores en Nueva York para seguir funcionando?", a: false, teacher: "Falso. La red funciona mediante miles de computadoras (nodos) distribuidas por todo el planeta." },
+        { q: "¿La primera compra física con Bitcoin fue de dos pizzas pagadas con 10,000 BTC en 2010?", a: true, teacher: "¡Histórico! El 22 de mayo de 2010 Laszlo Hanyecz compró dos pizzas. Hoy se celebra el Bitcoin Pizza Day." },
+        { q: "¿La blockchain es como un libro contable digital donde las transacciones son imborrables?", a: true, teacher: "Así es. Gracias a la criptografía y la prueba de trabajo, una vez escrito un bloque no se puede reescribir." }
+      ],
+      wordUnscrambleList: [
+        { word: "SATOSHI", hint: "Creador anónimo del protocolo Bitcoin" },
+        { word: "HALVING", hint: "Reducción a la mitad del premio a mineros" },
+        { word: "BLOQUE", hint: "Caja de datos donde se registran transferencias" },
+        { word: "MINERO", hint: "Computadora que valida transacciones con energía" },
+        { word: "WALLET", hint: "Billetera digital donde resguardas tus fondos" },
+        { word: "NODO", hint: "Computadora que vigila y guarda una copia del libro" },
+        { word: "HASH", hint: "Huella digital matemática criptográfica" },
+        { word: "LEDGER", hint: "Libro mayor de registros compartidos" }
+      ],
+      mathChallenges: [
+        { prompt: "En 2009 el premio por bloque era 50 BTC. Tras el primer Halving cayó a la mitad. ¿Cuánto fue?", ans: 25, unit: "BTC" },
+        { prompt: "Si el total máximo es 21 millones y ya se minaron 19 millones, ¿cuántos millones faltan?", ans: 2, unit: "Millones" },
+        { prompt: "En el halving de 2024 la recompensa cayó de 6.25 BTC a la mitad. ¿Cuál es la recompensa actual? (Redondea a 3.125 o escribe 3)", ans: 3, unit: "BTC aprox." },
+        { prompt: "1 Bitcoin equivale a 100 millones de Satoshis. Si tienes 0.5 BTC, ¿cuántos millones de sats tienes?", ans: 50, unit: "M sats" },
+        { prompt: "Si un bloque se procesa cada 10 minutos, ¿cuántos bloques se validan en 1 hora?", ans: 6, unit: "bloques" }
+      ],
+      matchPairs: [
+        { pairA: "Llave Pública", pairB: "Dirección para recibir fondos (como un CBU/IBAN)" },
+        { pairA: "Llave Privada", pairB: "Firma secreta para autorizar envíos" },
+        { pairA: "Proof of Work", pairB: "Gasto de cómputo para asegurar la red" },
+        { pairA: "21 Millones", pairB: "Tope máximo inmutable de suministro" }
+      ]
+    };
+
+    // Algorithmic generator for 400 unique stages
+    function generateLevelSpec(lvl) {
+      // 5 alternating mechanic types:
+      // 0: Reigns / Decision Card
+      // 1: Word Unscramble (Byte Decoder)
+      // 2: Tokenomics Quick Math
+      // 3: Concept Match 1-to-1
+      // 4: Proof-of-Work Target Hash Tap
+      const typeIndex = (lvl - 1) % 5;
+      const cluster = Math.floor((lvl - 1) / 80); // 5 Chapters of 80 levels each
+      
+      const chapterTitles = [
+        "Capítulo I: El Génesis de Nakamoto",
+        "Capítulo II: La Fuerza del Halving",
+        "Capítulo III: Soberanía y Criptografía",
+        "Capítulo IV: La Red Inmutable P2P",
+        "Capítulo V: La Ciudadela Global"
+      ];
+
+      const reward = 20 + (lvl * 5);
+
+      switch (typeIndex) {
+        case 0: {
+          const item = PEDAGOGY_DATA.reignsQuestions[(lvl * 7) % PEDAGOGY_DATA.reignsQuestions.length];
+          return {
+            levelNumber: lvl,
+            type: 'reigns',
+            chapter: chapterTitles[cluster],
+            title: `Decisión de Consenso #${lvl}`,
+            question: item.q,
+            correctAnswer: item.a,
+            teacherNote: item.teacher,
+            reward: reward
+          };
+        }
+        case 1: {
+          const item = PEDAGOGY_DATA.wordUnscrambleList[(lvl * 3) % PEDAGOGY_DATA.wordUnscrambleList.length];
+          // Scramble characters deterministically
+          let scrambled = item.word.split('').sort(() => 0.5 - ((lvl % 7) / 10)).join('');
+          if (scrambled === item.word) {
+            scrambled = item.word.split('').reverse().join('');
+          }
+          return {
+            levelNumber: lvl,
+            type: 'unscramble',
+            chapter: chapterTitles[cluster],
+            title: `Decodificador de Bytes #${lvl}`,
+            targetWord: item.word,
+            scrambledWord: scrambled,
+            hint: item.hint,
+            teacherNote: `¡Excelente! '${item.word}' es un término clave en el diseño de Bitcoin.`,
+            reward: reward
+          };
+        }
+        case 2: {
+          const item = PEDAGOGY_DATA.mathChallenges[(lvl * 2) % PEDAGOGY_DATA.mathChallenges.length];
+          // Modify numbers slightly as level ascends to ensure unique variance
+          const addDiff = Math.floor(lvl / 50);
+          return {
+            levelNumber: lvl,
+            type: 'math',
+            chapter: chapterTitles[cluster],
+            title: `Cálculo de Escasez #${lvl}`,
+            prompt: item.prompt,
+            correctNumber: item.ans,
+            unit: item.unit,
+            teacherNote: "Las matemáticas no mienten: la previsibilidad de Bitcoin evita sorpresas o devaluaciones inesperadas.",
+            reward: reward
+          };
+        }
+        case 3: {
+          const shuffledPairs = [...PEDAGOGY_DATA.matchPairs].sort(() => 0.5 - ((lvl % 3) / 5));
+          return {
+            levelNumber: lvl,
+            type: 'match',
+            chapter: chapterTitles[cluster],
+            title: `Pareo Conceptual #${lvl}`,
+            pairs: shuffledPairs.slice(0, 3),
+            teacherNote: "Comprender la diferencia entre conceptos públicos y privados es vital para resguardar tus satoshis.",
+            reward: reward
+          };
+        }
+        case 4: {
+          // Proof of work clicker challenge
+          const targetZeros = 2 + Math.min(3, Math.floor(lvl / 100));
+          const clicksNeeded = 4 + (lvl % 6);
+          return {
+            levelNumber: lvl,
+            type: 'pow',
+            chapter: chapterTitles[cluster],
+            title: `Minado Hash PoW #${lvl}`,
+            targetZeros: targetZeros,
+            clicksNeeded: clicksNeeded,
+            teacherNote: "La Prueba de Trabajo (Proof of Work) gasta computación real para validar bloques, imposibilitando ataques baratos.",
+            reward: reward
+          };
+        }
+      }
+    }
+
+    /* ==========================================================================
+       3. GAME STATE MANAGER
+       ========================================================================== */
+    class GameManager {
+      constructor() {
+        this.currentLevel = 1;
+        this.satoshis = 100;
+        this.energy = 5;
+        this.maxEnergy = 5;
+        this.highestUnlocked = 1;
+        this.currentSpec = null;
+        this.unscrambleInput = [];
+        this.matchSelectedA = null;
+        this.matchMatchedCount = 0;
+        this.powCount = 0;
+
+        this.init();
+      }
+
+      init() {
+        this.renderRoadmap();
+        this.loadLevel(this.currentLevel);
+        this.updateHUD();
+      }
+
+      updateHUD() {
+        document.getElementById('hud-level').innerText = `Nivel ${this.currentLevel}`;
+        document.getElementById('hud-sats').innerText = `${this.satoshis.toLocaleString()} sats`;
+        document.getElementById('hud-energy').innerText = `${this.energy}/${this.maxEnergy}`;
+      }
+
+      toggleView(view) {
+        soundEngine.playTap();
+        const vGame = document.getElementById('view-gameplay');
+        const vMap = document.getElementById('view-map');
+        if (view === 'map') {
+          vGame.classList.add('hidden');
+          vMap.classList.remove('hidden');
+          this.highlightActiveMapNode();
+        } else {
+          vMap.classList.add('hidden');
+          vGame.classList.remove('hidden');
+        }
+      }
+
+      showGlossary() {
+        soundEngine.playTap();
+        document.getElementById('modal-glossary').classList.remove('hidden');
+      }
+      closeGlossary() {
+        soundEngine.playTap();
+        document.getElementById('modal-glossary').classList.add('hidden');
+      }
+
+      jumpToLevelCluster(lvl) {
+        soundEngine.playTap();
+        const el = document.getElementById(`node-lvl-${lvl}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+
+      /* ==========================================================================
+         4. LEVEL LOADERS & MECHANICS RENDERERS
+         ========================================================================== */
+      loadLevel(lvl) {
+        this.currentLevel = lvl;
+        this.currentSpec = generateLevelSpec(lvl);
+        this.updateHUD();
+
+        // Update headers
+        document.getElementById('game-milestone-title').innerText = this.currentSpec.chapter;
+        document.getElementById('game-mechanic-name').innerText = this.currentSpec.title;
+        document.getElementById('game-reward-text').innerText = `+${this.currentSpec.reward} SAT`;
+        document.getElementById('level-step-progress').style.width = '30%';
+
+        // Hide feedback drawer
+        document.getElementById('teacher-drawer').classList.add('hidden');
+
+        const container = document.getElementById('interactive-area');
+        container.innerHTML = '';
+
+        // Route to mechanic builder
+        switch (this.currentSpec.type) {
+          case 'reigns':
+            this.renderReignsMechanic(container);
+            break;
+          case 'unscramble':
+            this.renderUnscrambleMechanic(container);
+            break;
+          case 'math':
+            this.renderMathMechanic(container);
+            break;
+          case 'match':
+            this.renderMatchMechanic(container);
+            break;
+          case 'pow':
+            this.renderPowMechanic(container);
+            break;
+        }
+      }
+
+      // 4.1 MECHANIC: REIGNS / SWIPE CARD DECISION
+      renderReignsMechanic(container) {
+        container.innerHTML = `
+          <div id="reigns-card" class="w-full bg-gradient-to-b from-cardBg to-slate-900 border border-slate-700/80 rounded-3xl p-6 shadow-2xl flex flex-col items-center justify-between text-center relative transition-all duration-300 min-h-[340px]">
+            <div class="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-btc text-2xl mb-2">
+              <i class="fa-solid fa-scale-balanced"></i>
+            </div>
+            <span class="text-xs font-mono tracking-widest text-slate-400 uppercase">¿Verdadero o Mito?</span>
+            <p class="text-base sm:text-lg font-semibold text-slate-100 my-auto px-2 leading-snug">
+              "${this.currentSpec.question}"
+            </p>
+            <div class="w-full grid grid-cols-2 gap-3 mt-4">
+              <button onclick="game.handleReignsAnswer(false)" class="py-3 px-4 bg-rose-950/60 hover:bg-rose-900 border border-rose-500/40 rounded-2xl text-rose-300 font-bold text-sm flex items-center justify-center gap-2 transition active:scale-95">
+                <i class="fa-solid fa-circle-xmark"></i> FALSO
+              </button>
+              <button onclick="game.handleReignsAnswer(true)" class="py-3 px-4 bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-500/40 rounded-2xl text-emerald-300 font-bold text-sm flex items-center justify-center gap-2 transition active:scale-95">
+                <i class="fa-solid fa-circle-check"></i> VERDADERO
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      handleReignsAnswer(chosen) {
+        const isCorrect = (chosen === this.currentSpec.correctAnswer);
+        const card = document.getElementById('reigns-card');
+        if (card) {
+          card.classList.add(chosen ? 'card-swipe-right' : 'card-swipe-left');
+        }
+        if (isCorrect) {
+          soundEngine.playCorrect();
+          this.showTeacherFeedback(true, this.currentSpec.teacherNote);
+        } else {
+          soundEngine.playError();
+          this.deductEnergy();
+          this.showTeacherFeedback(false, "¡Atención! " + this.currentSpec.teacherNote);
+        }
+      }
+
+      // 4.2 MECHANIC: WORD UNSCRAMBLE (BYTE DECODER)
+      renderUnscrambleMechanic(container) {
+        this.unscrambleInput = [];
+        const letters = this.currentSpec.scrambledWord.split('');
+
+        container.innerHTML = `
+          <div class="w-full flex flex-col items-center justify-between min-h-[340px]">
+            <div class="text-center mb-2">
+              <span class="text-xs text-neonCyan font-mono tracking-widest uppercase block mb-1">Misión Criptográfica</span>
+              <p class="text-xs text-slate-300 bg-slate-800/80 border border-slate-700 px-3 py-1.5 rounded-xl">
+                <i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i> Pista: ${this.currentSpec.hint}
+              </p>
+            </div>
+
+            <!-- Answer Slots -->
+            <div id="unscramble-slots" class="flex flex-wrap gap-2 justify-center my-4 min-h-[50px]">
+              ${this.currentSpec.targetWord.split('').map(() => `
+                <div class="w-10 h-12 bg-slate-900 border-2 border-dashed border-slate-600 rounded-xl flex items-center justify-center font-mono font-bold text-lg text-btc">
+                </div>
+              `).join('')}
+            </div>
+
+            <!-- Scrambled Letter Buttons -->
+            <div id="unscramble-buttons" class="flex flex-wrap gap-2 justify-center max-w-xs mb-4">
+              ${letters.map((char, idx) => `
+                <button onclick="game.pickUnscrambleLetter('${char}', ${idx})" id="letter-btn-${idx}" class="w-11 h-12 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl font-mono font-bold text-lg text-white shadow-md transition active:scale-95">
+                  ${char}
+                </button>
+              `).join('')}
+            </div>
+
+            <!-- Clear button -->
+            <button onclick="game.resetUnscramble()" class="text-xs text-slate-400 hover:text-white flex items-center gap-1.5 py-1 px-3 rounded-lg bg-slate-900 border border-slate-800">
+              <i class="fa-solid fa-rotate-left"></i> Reiniciar letras
+            </button>
+          </div>
+        `;
+      }
+
+      pickUnscrambleLetter(char, idx) {
+        soundEngine.playTap();
+        const btn = document.getElementById(`letter-btn-${idx}`);
+        if (!btn || btn.disabled) return;
+
+        btn.disabled = true;
+        btn.classList.add('opacity-20');
+        this.unscrambleInput.push({ char, idx });
+
+        this.updateUnscrambleSlots();
+
+        if (this.unscrambleInput.length === this.currentSpec.targetWord.length) {
+          const formed = this.unscrambleInput.map(x => x.char).join('');
+          if (formed === this.currentSpec.targetWord) {
+            soundEngine.playCorrect();
+            this.showTeacherFeedback(true, this.currentSpec.teacherNote);
+          } else {
+            soundEngine.playError();
+            this.deductEnergy();
+            setTimeout(() => this.resetUnscramble(), 600);
+          }
+        }
+      }
+
+      updateUnscrambleSlots() {
+        const slotsContainer = document.getElementById('unscramble-slots');
+        if (!slotsContainer) return;
+        const targetLen = this.currentSpec.targetWord.length;
+        slotsContainer.innerHTML = '';
+        for (let i = 0; i < targetLen; i++) {
+          const letter = this.unscrambleInput[i]?.char || '';
+          slotsContainer.innerHTML += `
+            <div class="w-10 h-12 ${letter ? 'bg-amber-500/20 border-btc' : 'bg-slate-900 border-dashed border-slate-600'} border-2 rounded-xl flex items-center justify-center font-mono font-bold text-lg text-btc shadow-sm">
+              ${letter}
+            </div>
+          `;
+        }
+      }
+
+      resetUnscramble() {
+        this.unscrambleInput = [];
+        this.updateUnscrambleSlots();
+        const buttons = document.querySelectorAll('#unscramble-buttons button');
+        buttons.forEach(btn => {
+          btn.disabled = false;
+          btn.classList.remove('opacity-20');
+        });
+      }
+
+      // 4.3 MECHANIC: TOKENOMICS QUICK MATH
+      renderMathMechanic(container) {
+        const correct = this.currentSpec.correctNumber;
+        // Generate 3 plausible decoys
+        const options = [correct, correct + 2, Math.max(1, correct - 2), correct * 2]
+          .filter((v, i, a) => a.indexOf(v) === i)
+          .slice(0, 4)
+          .sort(() => Math.random() - 0.5);
+
+        container.innerHTML = `
+          <div class="w-full bg-cardBg border border-slate-700/80 rounded-3xl p-6 shadow-2xl flex flex-col items-center justify-between text-center min-h-[340px]">
+            <div class="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-neonCyan text-2xl mb-2">
+              <i class="fa-solid fa-calculator"></i>
+            </div>
+            <span class="text-xs font-mono tracking-widest text-slate-400 uppercase">Lógica y Matemáticas</span>
+            <p class="text-base sm:text-lg font-semibold text-slate-100 my-auto px-2 leading-relaxed">
+              ${this.currentSpec.prompt}
+            </p>
+            <div class="w-full grid grid-cols-2 gap-3 mt-4">
+              ${options.map(val => `
+                <button onclick="game.handleMathAnswer(${val})" class="py-3 px-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-2xl text-slate-100 font-mono font-bold text-base transition active:scale-95">
+                  ${val} ${this.currentSpec.unit}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      handleMathAnswer(val) {
+        if (val === this.currentSpec.correctNumber) {
+          soundEngine.playCorrect();
+          this.showTeacherFeedback(true, this.currentSpec.teacherNote);
+        } else {
+          soundEngine.playError();
+          this.deductEnergy();
+          this.showTeacherFeedback(false, "Vuelve a calcular. " + this.currentSpec.teacherNote);
+        }
+      }
+
+      // 4.4 MECHANIC: CONCEPT MATCH PAIRING
+      renderMatchMechanic(container) {
+        this.matchSelectedA = null;
+        this.matchMatchedCount = 0;
+        const pairs = this.currentSpec.pairs;
+        const definitions = [...pairs].map((p, i) => ({ def: p.pairB, originalIndex: i })).sort(() => Math.random() - 0.5);
+
+        container.innerHTML = `
+          <div class="w-full flex flex-col justify-between min-h-[340px]">
+            <div class="text-center mb-3">
+              <span class="text-xs text-neonGreen font-mono tracking-widest uppercase block mb-1">Emparejamiento Fintech</span>
+              <p class="text-xs text-slate-300">Toca un concepto a la izquierda y luego su definición correcta.</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2.5 my-auto">
+              <!-- Left Column: Terms -->
+              <div class="flex flex-col gap-2">
+                ${pairs.map((p, idx) => `
+                  <button id="match-a-${idx}" onclick="game.selectMatchTerm(${idx})" class="p-2.5 bg-slate-800/90 border border-slate-700 rounded-xl text-left text-xs font-bold text-white transition active:scale-95">
+                    ${p.pairA}
+                  </button>
+                `).join('')}
+              </div>
+
+              <!-- Right Column: Shuffled Definitions -->
+              <div class="flex flex-col gap-2">
+                ${definitions.map((d, dIdx) => `
+                  <button id="match-b-${d.originalIndex}" onclick="game.selectMatchDef(${d.originalIndex})" class="p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-left text-[11px] text-slate-300 transition active:scale-95 leading-tight">
+                    ${d.def}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      selectMatchTerm(idx) {
+        soundEngine.playTap();
+        // Deselect previous
+        document.querySelectorAll('[id^="match-a-"]').forEach(el => el.classList.remove('ring-2', 'ring-btc', 'bg-amber-950/40'));
+        const btn = document.getElementById(`match-a-${idx}`);
+        if (!btn || btn.disabled) return;
+        this.matchSelectedA = idx;
+        btn.classList.add('ring-2', 'ring-btc', 'bg-amber-950/40');
+      }
+
+      selectMatchDef(idx) {
+        if (this.matchSelectedA === null) {
+          soundEngine.playTap();
+          return;
+        }
+
+        const btnA = document.getElementById(`match-a-${this.matchSelectedA}`);
+        const btnB = document.getElementById(`match-b-${idx}`);
+
+        if (this.matchSelectedA === idx) {
+          // Correct pair match
+          soundEngine.playCorrect();
+          btnA.disabled = true;
+          btnB.disabled = true;
+          btnA.className = "p-2.5 bg-emerald-950/80 border border-emerald-500/60 rounded-xl text-left text-xs font-bold text-emerald-300 opacity-60";
+          btnB.className = "p-2.5 bg-emerald-950/80 border border-emerald-500/60 rounded-xl text-left text-[11px] text-emerald-300 opacity-60 leading-tight";
+          this.matchMatchedCount++;
+          this.matchSelectedA = null;
+
+          if (this.matchMatchedCount === this.currentSpec.pairs.length) {
+            this.showTeacherFeedback(true, this.currentSpec.teacherNote);
+          }
+        } else {
+          // Mismatch
+          soundEngine.playError();
+          this.deductEnergy();
+          btnA.classList.remove('ring-2', 'ring-btc', 'bg-amber-950/40');
+          this.matchSelectedA = null;
+        }
+      }
+
+      // 4.5 MECHANIC: SPEED TAP / PROOF-OF-WORK HASH CLICKER
+      renderPowMechanic(container) {
+        this.powCount = 0;
+        const total = this.currentSpec.clicksNeeded;
+
+        container.innerHTML = `
+          <div class="w-full bg-cardBg border border-slate-700/80 rounded-3xl p-6 shadow-2xl flex flex-col items-center justify-between text-center min-h-[340px]">
+            <div class="text-center">
+              <span class="text-xs text-btc font-mono tracking-widest uppercase block mb-1">Simulador de Minería</span>
+              <p class="text-xs text-slate-300">Aporta poder de cómputo para resolver el acertijo criptográfico.</p>
+            </div>
+
+            <!-- Hash string preview -->
+            <div class="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 font-mono text-xs text-neonGreen tracking-wider my-2">
+              <span class="text-slate-500">Hash Objetivo: </span><br>
+              <span id="pow-hash-display">0000abf7e91d...</span>
+            </div>
+
+            <!-- Big Mining Hammer Button -->
+            <button id="btn-pow-mine" onclick="game.tapMineProofOfWork()" class="w-28 h-28 rounded-full bg-gradient-to-tr from-amber-600 via-btc to-amber-300 border-4 border-amber-200/50 shadow-lg flex flex-col items-center justify-center text-darkBg font-black text-2xl transition active:scale-90 pulse-subtle">
+              <i class="fa-solid fa-microchip text-3xl mb-1 text-slate-950"></i>
+              <span class="text-[10px] tracking-widest font-mono">MINAR</span>
+            </button>
+
+            <!-- Mining Progress Bar -->
+            <div class="w-full mt-3">
+              <div class="flex justify-between text-[11px] text-slate-400 font-mono mb-1">
+                <span>Dificultad de Red</span>
+                <span id="pow-progress-label">0 / ${total} hashes</span>
+              </div>
+              <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                <div id="pow-progress-fill" class="bg-gradient-to-r from-btc to-neonGreen h-full w-0 transition-all duration-150"></div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      tapMineProofOfWork() {
+        soundEngine.playTap();
+        this.powCount++;
+        const total = this.currentSpec.clicksNeeded;
+        const pct = Math.min(100, Math.round((this.powCount / total) * 100));
+
+        // Random fake hash generation
+        const hex = Math.random().toString(16).substring(2, 12);
+        const leadingZeros = "0".repeat(Math.min(4, Math.floor(this.powCount / 2)));
+        const hashDisplay = document.getElementById('pow-hash-display');
+        if (hashDisplay) hashDisplay.innerText = `${leadingZeros}${hex}...`;
+
+        const fill = document.getElementById('pow-progress-fill');
+        const label = document.getElementById('pow-progress-label');
+        if (fill) fill.style.width = `${pct}%`;
+        if (label) label.innerText = `${this.powCount} / ${total} hashes`;
+
+        if (this.powCount >= total) {
+          soundEngine.playCorrect();
+          const btn = document.getElementById('btn-pow-mine');
+          if (btn) btn.disabled = true;
+          this.showTeacherFeedback(true, this.currentSpec.teacherNote);
+        }
+      }
+
+      /* ==========================================================================
+         5. REWARDS, FEEDBACK & LEVEL SUCCESSION
+         ========================================================================== */
+      showTeacherFeedback(isSuccess, feedbackText) {
+        document.getElementById('level-step-progress').style.width = '100%';
+        const drawer = document.getElementById('teacher-drawer');
+        const title = document.getElementById('teacher-name');
+        const text = document.getElementById('teacher-feedback-text');
+        const btn = document.getElementById('btn-next-action');
+
+        drawer.classList.remove('hidden');
+        if (isSuccess) {
+          title.className = "text-xs font-bold text-neonGreen uppercase tracking-wider mb-1";
+          title.innerHTML = `<i class="fa-solid fa-circle-check mr-1"></i> ¡Bloque Validado! (+${this.currentSpec.reward} sats)`;
+          text.innerText = feedbackText;
+          btn.innerHTML = `Siguiente Nivel <i class="fa-solid fa-arrow-right ml-1"></i>`;
+          btn.onclick = () => this.completeLevel();
+
+          this.triggerConfetti();
+        } else {
+          title.className = "text-xs font-bold text-rose-400 uppercase tracking-wider mb-1";
+          title.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1"></i> Ajuste Pedagógico`;
+          text.innerText = feedbackText;
+          btn.innerHTML = `Reintentar desafío <i class="fa-solid fa-rotate-right ml-1"></i>`;
+          btn.onclick = () => this.loadLevel(this.currentLevel);
+        }
+      }
+
+      deductEnergy() {
+        this.energy = Math.max(0, this.energy - 1);
+        this.updateHUD();
+        if (this.energy === 0) {
+          // Free recharge after brief reflection
+          setTimeout(() => {
+            this.energy = this.maxEnergy;
+            this.updateHUD();
+          }, 3000);
+        }
+      }
+
+      completeLevel() {
+        soundEngine.playLevelUp();
+        this.satoshis += this.currentSpec.reward;
+        if (this.currentLevel >= this.highestUnlocked && this.highestUnlocked < 400) {
+          this.highestUnlocked = this.currentLevel + 1;
+        }
+
+        // Advance to next level or loop at 400
+        const nextLvl = this.currentLevel < 400 ? this.currentLevel + 1 : 1;
+        this.renderRoadmap();
+        this.loadLevel(nextLvl);
+      }
+
+      /* ==========================================================================
+         6. 400-LEVEL ROADMAP GENERATOR
+         ========================================================================== */
+      renderRoadmap() {
+        const grid = document.getElementById('level-map-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+
+        for (let i = 1; i <= 400; i++) {
+          const isUnlocked = (i <= this.highestUnlocked);
+          const isCurrent = (i === this.currentLevel);
+          const isMilestone = (i % 50 === 0 || i === 1);
+
+          let nodeClass = "";
+          if (isCurrent) {
+            nodeClass = "bg-btc text-darkBg font-black glow-gold border-2 border-white scale-105";
+          } else if (isUnlocked) {
+            nodeClass = "bg-slate-800 text-slate-100 hover:bg-slate-700 border border-slate-700";
+          } else {
+            nodeClass = "bg-slate-900/60 text-slate-600 border border-slate-800/60 cursor-not-allowed opacity-50";
+          }
+
+          grid.innerHTML += `
+            <button id="node-lvl-${i}" onclick="${isUnlocked ? `game.loadLevel(${i}); game.toggleView('game');` : ''}" class="h-14 rounded-2xl flex flex-col items-center justify-center p-1 relative transition active:scale-95 ${nodeClass}">
+              ${isMilestone ? `<span class="absolute -top-1.5 px-1 rounded-md bg-amber-400 text-slate-950 font-bold text-[8px] uppercase">Hito</span>` : ''}
+              <span class="text-xs font-mono font-bold leading-none">${i}</span>
+              <i class="fa-solid ${this.getIconForLevel(i)} text-[10px] mt-1 ${isCurrent ? 'text-darkBg' : isUnlocked ? 'text-btc' : 'text-slate-600'}"></i>
+            </button>
+          `;
+        }
+      }
+
+      getIconForLevel(lvl) {
+        const typeIndex = (lvl - 1) % 5;
+        switch (typeIndex) {
+          case 0: return 'fa-scale-balanced';
+          case 1: return 'fa-font';
+          case 2: return 'fa-calculator';
+          case 3: return 'fa-link';
+          case 4: return 'fa-hammer';
+        }
+      }
+
+      highlightActiveMapNode() {
+        const activeNode = document.getElementById(`node-lvl-${this.currentLevel}`);
+        if (activeNode) {
+          activeNode.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
+
+      /* ==========================================================================
+         7. CONFETTI CELEBRATION ENGINE (Pure Vanilla HTML5 Canvas)
+         ========================================================================== */
+      triggerConfetti() {
+        const canvas = document.getElementById('confetti-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const particles = [];
+        const colors = ['#F7931A', '#00F0FF', '#00E676', '#FF007A', '#FFFFFF'];
+
+        for (let i = 0; i < 60; i++) {
+          particles.push({
+            x: canvas.width / 2,
+            y: canvas.height * 0.4,
+            vx: (Math.random() - 0.5) * 14,
+            vy: (Math.random() - 0.7) * 14,
+            size: Math.random() * 7 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rotation: Math.random() * 360,
+            vRot: (Math.random() - 0.5) * 10
+          });
+        }
+
+        let frames = 0;
+        function animate() {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          particles.forEach(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.35; // Gravity
+            p.rotation += p.vRot;
+
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate((p.rotation * Math.PI) / 180);
+            ctx.fillStyle = p.color;
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+            ctx.restore();
+          });
+
+          frames++;
+          if (frames < 70) {
+            requestAnimationFrame(animate);
+          } else {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+          }
+        }
+        animate();
+      }
+    }
+
+    // Initialize Game Engine on Window Load
+    let game;
+    window.addEventListener('DOMContentLoaded', () => {
+      game = new GameManager();
+    });
+  </script>
+</body>
+</html>
